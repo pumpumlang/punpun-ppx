@@ -1,0 +1,118 @@
+{
+  "packages": [
+    {
+      "bundled": true,
+      "checksum": "1ae4edfa5ec524615f979389111372931d7b75f2198d69dbf616a56f7de1e625",
+      "description": "Command-line argument helpers",
+      "latest_version": "0.1.0",
+      "name": "cli",
+      "owner": "PunPun Project",
+      "version": "0.1.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "0.1.0",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "bundled": true,
+      "checksum": "89843efccf554006c4598e1fb67c091f531ffeeda018d5d6543f4623e1d2cdc6",
+      "description": "Filesystem convenience helpers built on PunPun runtime primitives",
+      "latest_version": "0.1.0",
+      "name": "filesystem",
+      "owner": "PunPun Project",
+      "version": "0.1.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "0.1.0",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "bundled": true,
+      "checksum": "eeda64612f72ca98e49199c91726c4580e11d81d45cfffe76cfbad6578ef5560",
+      "description": "Minimal native GUI foundation for PunPun (X11 beta / Windows MessageBox path)",
+      "latest_version": "0.1.0",
+      "name": "gui",
+      "owner": "PunPun Project",
+      "version": "0.1.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "0.1.0",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "bundled": true,
+      "checksum": "38633c38b2d086c02e3aba8df5a80c3553c2db2cca0fbce9983065e6fad4c6e1",
+      "description": "Small dependency-free JSON validation and field extraction helpers",
+      "latest_version": "0.1.0",
+      "name": "json",
+      "owner": "PunPun Project",
+      "version": "0.1.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "0.1.0",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "bundled": true,
+      "checksum": "a6c32deb667aaac68c201a622882adc4055408d4bcc13cbf70b9eb8e9778352a",
+      "description": "Small structured logging helpers for PunPun",
+      "latest_version": "0.1.0",
+      "name": "logging",
+      "owner": "PunPun Project",
+      "version": "0.1.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "0.1.0",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "bundled": true,
+      "checksum": "08eda07eb1fc7cf7caad20a5a292f93a78471462fda8d9b70f147058ecd05728",
+      "description": "Native HTTP requests for PunPun, loaded from the system libcurl runtime",
+      "latest_version": "0.1.0",
+      "name": "requests",
+      "owner": "PunPun Project",
+      "version": "0.1.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "0.1.0",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "bundled": true,
+      "checksum": "a5d0cd4ac80126516bf2db0f58329aeb1ea0b9d25a7d3b89c2c7404904cba548",
+      "description": "Tiny first-party test helpers",
+      "latest_version": "0.1.0",
+      "name": "testing",
+      "owner": "PunPun Project",
+      "version": "0.1.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "0.1.0",
+          "yanked": false
+        }
+      ]
+    }
+  ],
+  "release": "0.5.0-beta",
+  "schema": 1
+}

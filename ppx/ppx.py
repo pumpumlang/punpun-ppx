@@ -529,18 +529,253 @@ def cmd_info(args):
     print(json.dumps(meta, indent=2))
 
 
+# ---------------------------------------------------------------------------
+# Dependency graph
+#
+# A `[dependencies]` entry is either a registry requirement ("^1.2.0") or a
+# local path. PPX owns this table: `pp` only creates the initial manifest and
+# the compiler never reads it.
+#
+# The table is edited textually rather than by re-serializing the document,
+# because Python ships a TOML reader but no writer, and a round trip through a
+# hand-rolled writer would drop the comments and field order of a file people
+# maintain by hand.
+# ---------------------------------------------------------------------------
+
+DEP_LINE_RE = re.compile(r"^\s*(?:(?P<quoted>\"[^\"]+\"|'[^']+')|(?P<bare>[A-Za-z0-9_-]+))\s*=")
+
+
+def project_root() -> Path:
+    root = Path.cwd()
+    if not (root / "Punpun.toml").is_file():
+        raise SystemExit("ppx: no Punpun.toml in this directory; run `pp init` first")
+    return root
+
+
+def load_manifest(root: Path) -> dict:
+    try:
+        return tomllib.loads((root / "Punpun.toml").read_text(encoding="utf-8"))
+    except (tomllib.TOMLDecodeError, OSError) as exc:
+        raise SystemExit(f"ppx: invalid Punpun.toml: {exc}")
+
+
+def dependency_source(spec) -> tuple[str, str]:
+    """Classify a dependency specification as ('path'|'registry', value)."""
+    if isinstance(spec, dict):
+        if spec.get("path"):
+            return "path", str(spec["path"])
+        return "registry", str(spec.get("version", "*"))
+    text = str(spec)
+    if text.startswith(".") or text.startswith("/") or "/" in text or "\\" in text:
+        return "path", text
+    return "registry", text
+
+
+def _dependency_key(line: str) -> str | None:
+    match = DEP_LINE_RE.match(line)
+    if not match:
+        return None
+    quoted = match.group("quoted")
+    return quoted[1:-1] if quoted else match.group("bare")
+
+
+def write_dependency(root: Path, name: str, literal: str | None) -> None:
+    """Insert, replace, or (literal=None) delete one `[dependencies]` entry."""
+    path = root / "Punpun.toml"
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[dependencies.") and stripped.rstrip("]").endswith("." + name):
+            raise SystemExit(
+                f"ppx: {name} is declared as a [dependencies.{name}] table; edit Punpun.toml by hand"
+            )
+
+    start = next((i + 1 for i, line in enumerate(lines) if line.strip() == "[dependencies]"), None)
+    if start is None:
+        if literal is None:
+            raise SystemExit(f"ppx: {name} is not a dependency of this package")
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines += ["[dependencies]", f"{name} = {literal}"]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return
+
+    end = len(lines)
+    for index in range(start, len(lines)):
+        if lines[index].lstrip().startswith("["):
+            end = index
+            break
+
+    existing = {_dependency_key(lines[i]): i for i in range(start, end)}
+    existing.pop(None, None)
+
+    if name in existing:
+        if literal is None:
+            del lines[existing[name]]
+        else:
+            lines[existing[name]] = f"{name} = {literal}"
+    elif literal is None:
+        raise SystemExit(f"ppx: {name} is not a dependency of this package")
+    else:
+        # Keep entries sorted so manifests stay diff-friendly.
+        insert = end
+        for key, index in sorted(existing.items(), key=lambda item: item[1]):
+            if key > name:
+                insert = index
+                break
+        else:
+            while insert > start and not lines[insert - 1].strip():
+                insert -= 1
+        lines.insert(insert, f"{name} = {literal}")
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def display_path(root: Path, target: Path) -> str:
+    """Render `target` relative to the project, unless absolute reads better."""
+    try:
+        relative = os.path.relpath(target, root)
+    except ValueError:  # a different drive on Windows
+        return str(target)
+    return relative if len(relative) <= len(str(target)) else str(target)
+
+
+def dependency_literal(root: Path, target: Path) -> str:
+    value = display_path(root, target).replace("\\", "\\\\").replace('"', '\\"')
+    return '{ path = "%s" }' % value
+
+
+def resolve_dependency(root: Path, name: str, spec) -> tuple[str, Path | None, str]:
+    """Return (kind, materialized path, display) for one dependency."""
+    kind, value = dependency_source(spec)
+    if kind == "path":
+        target = (root / value).resolve()
+        return "path", (target if target.is_dir() else None), value
+    bundled = bundled_packages() / name
+    if bundled.is_dir():
+        return "bundled", bundled.resolve(), value
+    return "registry", None, value
+
+
+def write_lock(root: Path) -> Path:
+    """Write Punpun.lock: a deterministic record of the resolved graph."""
+    document = load_manifest(root)
+    package = document.get("package") or {}
+    entries = []
+    for name, spec in sorted((document.get("dependencies") or {}).items()):
+        kind, target, value = resolve_dependency(root, name, spec)
+        entry = {"name": name, "source": kind, "requirement": value}
+        if target is not None:
+            entry["path"] = display_path(root, target)
+            dep_manifest = target / "Punpun.toml"
+            if dep_manifest.is_file():
+                try:
+                    dep_package = tomllib.loads(dep_manifest.read_text(encoding="utf-8")).get("package") or {}
+                    if dep_package.get("version"):
+                        entry["version"] = str(dep_package["version"])
+                except tomllib.TOMLDecodeError:
+                    pass
+        entries.append(entry)
+    lock = {
+        "format": 1,
+        "package": {"name": str(package.get("name", "")), "version": str(package.get("version", ""))},
+        "packages": entries,
+    }
+    path = root / "Punpun.lock"
+    path.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
 def cmd_add(args):
     if not NAME_RE.fullmatch(args.name): raise SystemExit("ppx: invalid package name")
+    root = project_root()
     if args.path:
-        root = Path(args.path).expanduser().resolve()
+        source = Path(args.path).expanduser().resolve()
+        if not source.is_dir():
+            raise SystemExit(f"ppx: path dependency not found: {source}")
     else:
         bundled = bundled_packages() / args.name
-        if bundled.is_dir():
-            root = bundled.resolve()
+        source = bundled.resolve() if bundled.is_dir() else resolve_remote(args.name, args.version)
+    write_dependency(root, args.name, dependency_literal(root, source))
+    write_lock(root)
+    print(f"PPX added {args.name} from {source}")
+
+
+def cmd_remove(args):
+    root = project_root()
+    write_dependency(root, args.name, None)
+    write_lock(root)
+    print(f"PPX removed {args.name}")
+
+
+def cmd_tree(_args):
+    root = project_root()
+    document = load_manifest(root)
+    package = document.get("package") or {}
+    print(f"{package.get('name', root.name)} {package.get('version', '')}".strip())
+
+    def walk(base: Path, dependencies: dict, prefix: str, seen: set[Path]) -> None:
+        items = sorted(dependencies.items())
+        for index, (name, spec) in enumerate(items):
+            last = index == len(items) - 1
+            kind, target, value = resolve_dependency(base, name, spec)
+            if kind == "registry":
+                label = f"{name} {value} (registry; run `ppx install {name}`)"
+            elif target is None:
+                label = f"{name} {value} (missing)"
+            else:
+                label = f"{name} ({kind})"
+            print(f"{prefix}{'`-- ' if last else '|-- '}{label}")
+            if target is None:
+                continue
+            resolved = target.resolve()
+            if resolved in seen:
+                print(f"{prefix}{'    ' if last else '|   '}`-- (already shown)")
+                continue
+            child = target / "Punpun.toml"
+            if not child.is_file():
+                continue
+            try:
+                nested = tomllib.loads(child.read_text(encoding="utf-8")).get("dependencies") or {}
+            except tomllib.TOMLDecodeError:
+                continue
+            if nested:
+                walk(target, nested, prefix + ("    " if last else "|   "), seen | {resolved})
+
+    dependencies = document.get("dependencies") or {}
+    if not dependencies:
+        print("(no dependencies)")
+        return
+    walk(root, dependencies, "", {root.resolve()})
+
+
+def cmd_update(_args):
+    root = project_root()
+    document = load_manifest(root)
+    dependencies = document.get("dependencies") or {}
+    missing = []
+    for name, spec in sorted(dependencies.items()):
+        kind, target, value = resolve_dependency(root, name, spec)
+        if kind == "registry":
+            try:
+                source = resolve_remote(name, value if value != "*" else None)
+            except SystemExit as exc:
+                missing.append(f"{name}: {exc}")
+                continue
+            write_dependency(root, name, dependency_literal(root, source))
+            print(f"updated {name} -> {source}")
+        elif target is None:
+            missing.append(f"{name}: path dependency is missing: {value}")
         else:
-            root = resolve_remote(args.name, args.version)
-    run_pp("add", args.name, str(root))
-    print(f"PPX added {args.name} from {root}")
+            print(f"ok      {name} -> {target}")
+    lock = write_lock(root)
+    if missing:
+        for item in missing:
+            print(f"ppx: {item}", file=sys.stderr)
+        raise SystemExit("ppx: some dependencies could not be resolved")
+    print(f"wrote {lock.name} ({len(dependencies)} dependenc{'y' if len(dependencies) == 1 else 'ies'})")
 
 
 def print_publish_plan(metadata: dict, content: bytes, checksum: str) -> None:
@@ -625,7 +860,7 @@ def cmd_download(args):
 
 def cmd_install(args):
     if not args.name:
-        return run_pp("update")
+        return cmd_update(args)
     return cmd_add(args)
 
 def cmd_logout(_args):
@@ -761,12 +996,12 @@ def parser() -> argparse.ArgumentParser:
     add = sub.add_parser("add"); add.add_argument("name"); add.add_argument("version", nargs="?"); add.add_argument("--path"); add.set_defaults(func=cmd_add)
     install = sub.add_parser("install", help="install a registry package, or update the current graph when no name is supplied")
     install.add_argument("name", nargs="?"); install.add_argument("version", nargs="?"); install.add_argument("--path"); install.set_defaults(func=cmd_install)
-    rem = sub.add_parser("remove"); rem.add_argument("name"); rem.set_defaults(func=lambda a: run_pp("remove", a.name))
-    sub.add_parser("update").set_defaults(func=lambda a: run_pp("update"))
+    rem = sub.add_parser("remove"); rem.add_argument("name"); rem.set_defaults(func=cmd_remove)
+    sub.add_parser("update").set_defaults(func=cmd_update)
     search = sub.add_parser("search"); search.add_argument("query", nargs="?", default=""); search.set_defaults(func=cmd_search)
     info = sub.add_parser("info"); info.add_argument("name"); info.set_defaults(func=cmd_info)
     download = sub.add_parser("download"); download.add_argument("name"); download.add_argument("version", nargs="?"); download.add_argument("-o", "--output"); download.set_defaults(func=cmd_download)
-    sub.add_parser("tree").set_defaults(func=lambda a: run_pp("tree"))
+    sub.add_parser("tree").set_defaults(func=cmd_tree)
     sub.add_parser("outdated").set_defaults(func=lambda a: print("ppx: registry-installed dependency version tracking is beta; use `ppx info <name>`"))
     for command in ("publish", "upload"):
         pub = sub.add_parser(command, help="validate and publish the current package")

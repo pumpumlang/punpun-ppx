@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0 — 2026-09-11
+
+- Coordinated PPX with the PunPun 1.5.0 halfway release so platform packaging
+  can embed an exact matching package-manager client.
+- Kept the stable format-1 lockfile, deterministic package archive, dependency
+  path bridge and `outdated` behavior from 1.4.5 unchanged.
+- Reserved the larger PPX discovery/ecosystem improvements for the second half
+  of the PunPun 1.5 series rather than changing package semantics mid-release.
+
 ## 1.4.5 — 2026-09-11
 
 - Added a deterministic `ppx paths` bridge so the `pp` launcher can pass every

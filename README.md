@@ -77,7 +77,7 @@ PPX edits that table in place, so comments, field order and unrelated tables
 survive. A dependency written as a `[dependencies.<name>]` sub-table is left
 for you to edit by hand rather than rewritten.
 
-The PunPun 1.4.5 launcher asks `ppx paths` for the materialized dependency
+The PunPun 1.5.0 launcher asks `ppx paths` for the materialized dependency
 roots before invoking the compiler. This makes installed packages available to
 normal `pp build`, `pp run`, and `pp check` commands without hand-written
 `--module-path` flags. `ppx outdated --json` exposes the same current/latest

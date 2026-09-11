@@ -1,10 +1,11 @@
-# PunPunXPac 1.4.5
+# PunPunXPac 1.5.0
 
-PPX 1.4.5 is the package-manager companion to PunPun 1.4.5. The SDK release
-embeds this exact client and refuses to assemble when the language and PPX
-versions differ.
+PPX 1.5.0 is the package-manager companion release for PunPun 1.5.0. The
+PunPun SDK release embeds this exact client and refuses to assemble when the
+language and PPX versions differ.
 
-The release adds compiler-path integration through `ppx paths`, makes
-`ppx outdated` report useful current/latest information (including JSON for
-tooling), and keeps deterministic format-1 lockfiles and package archives
-compatible with the stable 1.x line.
+This halfway release intentionally keeps the PPX behavior and stable format-1
+lockfile/package contract from 1.4.5 while coordinating the package manager
+with the PunPun 1.5.0 compiler, runtime, standard library, networking and GUI
+release. The larger PPX ecosystem/tooling expansion remains scheduled for the
+second half of the 1.5 series.

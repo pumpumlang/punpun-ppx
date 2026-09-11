@@ -3,7 +3,7 @@ name: release
 on:
   push:
     branches: [main]
-    paths: [VERSION]
+    paths: [VERSION, "RELEASE_NOTES.md", ".github/workflows/release.yml"]
   workflow_dispatch:
 
 permissions:

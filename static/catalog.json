@@ -34,16 +34,32 @@
     },
     {
       "bundled": true,
-      "checksum": "eeda64612f72ca98e49199c91726c4580e11d81d45cfffe76cfbad6578ef5560",
-      "description": "Minimal native GUI foundation for PunPun (X11 beta / Windows MessageBox path)",
-      "latest_version": "0.1.0",
+      "checksum": "09b13cf5870db9e75d927d8f1406365178ae03199aa64256a333f2e16265fd26",
+      "description": "PunPun native GUI foundation backed by compiler/runtime builtins",
+      "latest_version": "1.3.0",
       "name": "gui",
       "owner": "PunPun Project",
-      "version": "0.1.0",
+      "version": "1.3.0",
       "versions": [
         {
           "bundled": true,
-          "version": "0.1.0",
+          "version": "1.3.0",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "bundled": true,
+      "checksum": "feeddcb6e54d2d3beccbfdf86414ad9eab6656a66cba346f89a1691657a829b8",
+      "description": "Verified HTTPS requests for PunPun",
+      "latest_version": "1.3.0",
+      "name": "https",
+      "owner": "PunPun Project",
+      "version": "1.3.0",
+      "versions": [
+        {
+          "bundled": true,
+          "version": "1.3.0",
           "yanked": false
         }
       ]
@@ -82,16 +98,16 @@
     },
     {
       "bundled": true,
-      "checksum": "08eda07eb1fc7cf7caad20a5a292f93a78471462fda8d9b70f147058ecd05728",
-      "description": "Native HTTP requests for PunPun, loaded from the system libcurl runtime",
-      "latest_version": "0.1.0",
+      "checksum": "49b3c2c8cb988e95abc7c87a81d785aa8618bfde7d4d89ddf697c17ba58922bf",
+      "description": "Compatibility request helpers backed by PunPun's verified HTTPS runtime",
+      "latest_version": "1.3.0",
       "name": "requests",
       "owner": "PunPun Project",
-      "version": "0.1.0",
+      "version": "1.3.0",
       "versions": [
         {
           "bundled": true,
-          "version": "0.1.0",
+          "version": "1.3.0",
           "yanked": false
         }
       ]
@@ -113,6 +129,6 @@
       ]
     }
   ],
-  "release": "0.6.0-beta",
+  "release": "1.3.0",
   "schema": 1
 }

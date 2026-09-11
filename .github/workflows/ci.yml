@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ppx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Byte-compile the client and registry
+        run: python3 -m compileall -q ppx registry build.py
+      - name: Client starts without a PunPun checkout
+        run: |
+          python3 ppx/ppx.py --help > /dev/null
+          python3 ppx/ppx.py doctor
+      - name: Verify the committed catalog site matches the sources
+        run: python3 build.py --check
+      - name: Verify the page build is reproducible
+        run: |
+          python3 build.py
+          git diff --exit-code

@@ -58,8 +58,42 @@ Local development dependencies are supported with:
 ppx add my_package --path ../my_package
 ```
 
-PPX uses the same `Punpun.toml` / `Punpun.lock` package graph consumed by `pp`.
-There is no package-manager-specific compiler pipeline.
+PPX owns the `Punpun.toml` package graph. `pp new` and `pp init` create the
+manifest, the compiler reads modules by path, and everything between — adding,
+removing, resolving and locking dependencies — is PPX's job. The `pp`
+subcommands `add`, `remove`, `tree`, `update` and `fetch` are a front end for
+the equivalent PPX commands and require PPX to be installed.
+
+A `[dependencies]` entry is either a registry requirement or a local path:
+
+```toml
+[dependencies]
+json = { path = "../json" }
+requests = "^0.1.0"
+```
+
+PPX edits that table in place, so comments, field order and unrelated tables
+survive. A dependency written as a `[dependencies.<name>]` sub-table is left
+for you to edit by hand rather than rewritten.
+
+### Punpun.lock
+
+`ppx update` (and `ppx install` with no package name) writes `Punpun.lock`, a
+deterministic **format 1** record of the resolved graph:
+
+```json
+{
+  "format": 1,
+  "package": { "name": "app", "version": "0.1.0" },
+  "packages": [
+    { "name": "json", "source": "path", "requirement": "../json",
+      "path": "../json", "version": "0.1.0" }
+  ]
+}
+```
+
+`source` is `path`, `bundled` or `registry`. Format-1 lockfiles stay readable
+for all of 1.x, as the language's ABI and package policy requires.
 
 ## Publishing
 

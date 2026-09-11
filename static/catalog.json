@@ -34,32 +34,32 @@
     },
     {
       "bundled": true,
-      "checksum": "09b13cf5870db9e75d927d8f1406365178ae03199aa64256a333f2e16265fd26",
+      "checksum": "4fa77802026629f567cf63bfdb5e4f43a03a2a380b0a5935d8dccada244d446b",
       "description": "PunPun native GUI foundation backed by compiler/runtime builtins",
-      "latest_version": "1.3.0",
+      "latest_version": "1.4.5",
       "name": "gui",
       "owner": "PunPun Project",
-      "version": "1.3.0",
+      "version": "1.4.5",
       "versions": [
         {
           "bundled": true,
-          "version": "1.3.0",
+          "version": "1.4.5",
           "yanked": false
         }
       ]
     },
     {
       "bundled": true,
-      "checksum": "feeddcb6e54d2d3beccbfdf86414ad9eab6656a66cba346f89a1691657a829b8",
+      "checksum": "0ba94bf5d0d7c68f1b4e221ac837a1b38c5d0563e612466807e0e44a51f936aa",
       "description": "Verified HTTPS requests for PunPun",
-      "latest_version": "1.3.0",
+      "latest_version": "1.4.5",
       "name": "https",
       "owner": "PunPun Project",
-      "version": "1.3.0",
+      "version": "1.4.5",
       "versions": [
         {
           "bundled": true,
-          "version": "1.3.0",
+          "version": "1.4.5",
           "yanked": false
         }
       ]
@@ -98,16 +98,16 @@
     },
     {
       "bundled": true,
-      "checksum": "49b3c2c8cb988e95abc7c87a81d785aa8618bfde7d4d89ddf697c17ba58922bf",
+      "checksum": "80df39704a9babc4578157b4b0a580dd89bd6fca0e7b2bb2e38f88b4a88f82ed",
       "description": "Compatibility request helpers backed by PunPun's verified HTTPS runtime",
-      "latest_version": "1.3.0",
+      "latest_version": "1.4.5",
       "name": "requests",
       "owner": "PunPun Project",
-      "version": "1.3.0",
+      "version": "1.4.5",
       "versions": [
         {
           "bundled": true,
-          "version": "1.3.0",
+          "version": "1.4.5",
           "yanked": false
         }
       ]
@@ -129,6 +129,6 @@
       ]
     }
   ],
-  "release": "1.3.0",
+  "release": "1.4.5",
   "schema": 1
 }

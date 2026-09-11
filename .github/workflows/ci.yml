@@ -22,6 +22,8 @@ jobs:
         run: |
           python3 ppx/ppx.py --help > /dev/null
           python3 ppx/ppx.py doctor
+      - name: Package-manager regression tests
+        run: python3 -m unittest discover -s tests -v
       - name: Verify the committed catalog site matches the sources
         run: python3 build.py --check
       - name: Verify the page build is reproducible

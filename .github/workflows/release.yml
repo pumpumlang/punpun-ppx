@@ -1,0 +1,35 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Validate PPX
+        run: |
+          python3 -m compileall -q ppx registry build.py
+          python3 -m unittest discover -s tests -v
+          python3 build.py --check
+      - name: Publish matching source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(tr -d '\r\n' < VERSION)
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "PunPunXPac $version" --notes-file RELEASE_NOTES.md
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --title "PunPunXPac $version" --notes-file RELEASE_NOTES.md
+          fi

@@ -154,14 +154,15 @@ def version_key(value: str):
 
 
 def satisfies(version: str, requirement: str | None) -> bool:
-    if not requirement or requirement in ("*", "latest"):
-        return True
-    actual = parse_semver(version)[:3]
-    req = requirement.strip()
+    parsed_version = parse_semver(version)
+    actual = parsed_version[:3]
+    req = (requirement or "*").strip()
     # Stable-by-default resolution: prereleases are selected only when the
     # requirement explicitly names a prerelease.
-    if parse_semver(version)[3] is not None and "-" not in req:
+    if parsed_version[3] is not None and "-" not in req:
         return False
+    if req in ("", "*", "latest"):
+        return True
     if SEMVER_RE.fullmatch(req):
         return version == req
     if req.startswith("^"):
@@ -688,6 +689,87 @@ def write_lock(root: Path) -> Path:
     return path
 
 
+def dependency_paths(root: Path) -> list[Path]:
+    """Return every materialized dependency root in deterministic order."""
+    document = load_manifest(root)
+    paths: list[Path] = []
+    seen: set[Path] = set()
+    missing: list[str] = []
+    for name, spec in sorted((document.get("dependencies") or {}).items()):
+        kind, target, value = resolve_dependency(root, name, spec)
+        if kind == "registry":
+            missing.append(f"{name} {value} is not materialized; run `ppx update`")
+            continue
+        if target is None:
+            missing.append(f"{name} path is missing: {value}")
+            continue
+        resolved = target.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            paths.append(resolved)
+    if missing:
+        raise SystemExit("ppx: " + "; ".join(missing))
+    return paths
+
+
+def cmd_paths(_args):
+    """Machine-readable bridge used by `pp` to populate compiler module roots."""
+    for path in dependency_paths(project_root()):
+        print(path)
+
+
+def _cached_identity(target: Path | None) -> tuple[str, str] | None:
+    if target is None:
+        return None
+    try:
+        relative = target.resolve().relative_to((cache_root() / "packages").resolve())
+    except ValueError:
+        return None
+    parts = relative.parts
+    if len(parts) >= 3 and parts[2] == "src":
+        return parts[0], parts[1]
+    return None
+
+
+def cmd_outdated(args):
+    root = project_root()
+    dependencies = load_manifest(root).get("dependencies") or {}
+    rows = []
+    for name, spec in sorted(dependencies.items()):
+        kind, target, requirement = resolve_dependency(root, name, spec)
+        cached = _cached_identity(target)
+        if kind in {"path", "bundled"} and cached is None:
+            current = "local" if kind == "path" else "bundled"
+            if target is not None and (target / "Punpun.toml").is_file():
+                try:
+                    package = tomllib.loads((target / "Punpun.toml").read_text(encoding="utf-8")).get("package") or {}
+                    current = str(package.get("version") or current)
+                except tomllib.TOMLDecodeError:
+                    pass
+            rows.append({"name": name, "current": current, "latest": current, "status": kind})
+            continue
+
+        current = cached[1] if cached else "not installed"
+        requested = None if cached else (requirement if requirement != "*" else None)
+        try:
+            metadata = api_json("/api/v1/packages/" + urllib.parse.quote(name))
+            latest = choose_version(metadata, requested)["version"]
+            status = "current" if current == latest else "outdated"
+        except SystemExit as exc:
+            latest = "unknown"
+            status = str(exc)
+        rows.append({"name": name, "current": current, "latest": latest, "status": status})
+
+    if args.json:
+        print(json.dumps({"packages": rows}, indent=2, sort_keys=True))
+        return
+    if not rows:
+        print("No dependencies.")
+        return
+    for row in rows:
+        print(f"{row['name']:<24} {row['current']:<16} {row['latest']:<16} {row['status']}")
+
+
 def cmd_add(args):
     if not NAME_RE.fullmatch(args.name): raise SystemExit("ppx: invalid package name")
     root = project_root()
@@ -1002,7 +1084,10 @@ def parser() -> argparse.ArgumentParser:
     info = sub.add_parser("info"); info.add_argument("name"); info.set_defaults(func=cmd_info)
     download = sub.add_parser("download"); download.add_argument("name"); download.add_argument("version", nargs="?"); download.add_argument("-o", "--output"); download.set_defaults(func=cmd_download)
     sub.add_parser("tree").set_defaults(func=cmd_tree)
-    sub.add_parser("outdated").set_defaults(func=lambda a: print("ppx: registry-installed dependency version tracking is beta; use `ppx info <name>`"))
+    sub.add_parser("paths", help=argparse.SUPPRESS).set_defaults(func=cmd_paths)
+    outdated = sub.add_parser("outdated", help="show current and latest dependency versions")
+    outdated.add_argument("--json", action="store_true")
+    outdated.set_defaults(func=cmd_outdated)
     for command in ("publish", "upload"):
         pub = sub.add_parser(command, help="validate and publish the current package")
         pub.add_argument("--dry-run", action="store_true", help="build and validate the package archive without uploading")
